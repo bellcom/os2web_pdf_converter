@@ -21,9 +21,13 @@ if (php_sapi_name() !== 'cli') {
   exit();
 }
 
+if (!shell_exec('which unoconv')) {
+  print ('unoconv was not found. hint: sudo apt-get install unoconv');
+  exit();
+}
+
 if (!shell_exec('which soffice')) {
   print ('soffice was not found. You need to install a pdf conversion tool like LibreOffice.');
-  exit();
 }
 
 if (!shell_exec('which convert')) {
@@ -43,6 +47,11 @@ elseif (!is_dir($_SERVER['argv'][1])) {
   exit();
 }
 else {
+  // Start unoconv if not started.
+  if (!shell_exec('ps -ef | grep -v grep | grep "/unoconv -l"')) {
+    exec('unoconv -l >/dev/null 2>/dev/null &');
+  }
+
   $directory_root = $_SERVER['argv'][1];
 
   $tmp_directory = '/tmp/os2web_pdf_converter';
@@ -81,7 +90,6 @@ foreach (getFilesList($directory_root, '/.*\.(' . implode('|', $allowed_extensio
         if (defined('DRUPAL_ROOT')) {
           updateDrupalFile($file);
         }
-//        print ($file->file . ' was converted to pdf.');
       }
 
     }

@@ -9,7 +9,6 @@
 class PDFConverter {
 
   const FAMILY_TEXT           = "Text";
-  const FAMILY_WEB            = "Web";
   const FAMILY_SPREADSHEET    = "Spreadsheet";
   const FAMILY_PRESENTATION   = "Presentation";
   const FAMILY_DRAWING        = "Drawing";
@@ -21,8 +20,7 @@ class PDFConverter {
    * @var array
    */
   public static $familyExtensions = array(
-    self::FAMILY_TEXT => array('txt', 'doc', 'docx', 'odt'),
-    self::FAMILY_WEB => array('html'),
+    self::FAMILY_TEXT => array('txt', 'doc', 'docx', 'odt', 'html'),
     self::FAMILY_SPREADSHEET => array('ods','ots','rdf','xls','xlsx'),
     self::FAMILY_PRESENTATION => array('ppt', 'pptx', 'odp'),
     self::FAMILY_DRAWING => array('odg'),
@@ -36,11 +34,10 @@ class PDFConverter {
    */
   public static $exportFilterMap = array(
     "pdf" => array(
-      self::FAMILY_TEXT => array('soffice' => 'writer_pdf_Export'),
-      self::FAMILY_WEB => array('soffice' => 'writer_web_pdf_Export'),
-      self::FAMILY_SPREADSHEET => array('soffice' => 'calc_pdf_Export'),
-      self::FAMILY_PRESENTATION => array('soffice' => 'impress_pdf_Export'),
-      self::FAMILY_DRAWING => array('soffice' => 'draw_pdf_Export'),
+      self::FAMILY_TEXT => array('unoconv' => 'document'),
+      self::FAMILY_SPREADSHEET => array('unoconv' => 'spreadsheet'),
+      self::FAMILY_PRESENTATION => array('unoconv' => 'presentation'),
+      self::FAMILY_DRAWING => array('unoconv' => 'graphics'),
       self::FAMILY_MULTIPAGETIFF => array('ImageMagick' => 'ImageMagick'),
       self::FAMILY_MSG => array('Outlook-msg' => 'Outlook-msg'),
     ),
@@ -112,6 +109,19 @@ class PDFConverter {
         // writer as filter.
         $filter_name = isset(self::$exportFilterMap['pdf'][$this->fileFamily]['soffice']) ? self::$exportFilterMap['pdf'][$this->fileFamily]['soffice'] : self::$exportFilterMap['pdf'][self::FAMILY_TEXT]['soffice'];
         shell_exec('soffice --headless --invisible -convert-to pdf:' . $filter_name . ' -outdir "' . $output_dir . '" "' . $this->file . '" &>/dev/null');
+
+        return TRUE;
+
+      break;
+
+      //
+      // Convert by using unoconv command.
+      //
+      case 'unoconv':
+        // Get the correct filter name. If couldnt be found it uses regular
+        // writer as filter.
+        $filter_name = isset(self::$exportFilterMap['pdf'][$this->fileFamily]['unoconv']) ? self::$exportFilterMap['pdf'][$this->fileFamily]['unoconv'] : self::$exportFilterMap['pdf'][self::FAMILY_TEXT]['unoconv'];
+        shell_exec('unoconv -f pdf -eSelectPdfVersion=1 --doctype=' . $filter_name . ' "' . $this->file . '" &>/dev/null');
 
         return TRUE;
 
