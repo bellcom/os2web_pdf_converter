@@ -21,7 +21,7 @@ class PDFConverter {
    */
   public static $familyExtensions = array(
     self::FAMILY_TEXT => array('txt', 'doc', 'docx', 'odt', 'html'),
-    self::FAMILY_SPREADSHEET => array('ods','ots','rdf','xls','xlsx'),
+    self::FAMILY_SPREADSHEET => array('ods','ots','rdf','xls','xlsx','xlsb'),
     self::FAMILY_PRESENTATION => array('ppt', 'pptx', 'odp'),
     self::FAMILY_DRAWING => array('odg'),
     self::FAMILY_MULTIPAGETIFF => array('tiff', 'tif'),
@@ -46,6 +46,7 @@ class PDFConverter {
   public $file;
   public $fileExtension;
   public $fileFamily;
+  public $fileName;
   public $pdf;
 
   /**
@@ -59,6 +60,7 @@ class PDFConverter {
       $this->file = $file;
       $this->pdf = preg_replace('/\.(' . implode('|', self::getAllowedExtenstions()) . ')$/i', '.pdf', $file);
       $this->fileExtension = strtolower(pathinfo($this->file, PATHINFO_EXTENSION));
+      $this->fileName=strtolower(pathinfo($this->file, PATHINFO_FILENAME));
 
       $this->fileFamily = $this->getFamily();
     }
@@ -120,6 +122,17 @@ class PDFConverter {
       case 'unoconv':
         // Get the correct filter name. If couldnt be found it uses regular
         // writer as filter.
+        if ($this->fileExtension=='html'){
+          // change HTML encoding to UTF 8
+           $tmp_filename=$output_dir . '/' .  $this->fileName.'_tmp.'.$this->fileExtension;
+           $encoding= str_replace("\n",'',array_pop(explode(':', shell_exec('file --mime-encoding ' . $this->file))));         //
+           if (strpos($encoding,'unknown')) 
+                $encoding = 'iso-8859-1' ;  
+           shell_exec('iconv -f ' . $encoding . ' -t utf8 ' . $this->file . ' > ' . $tmp_filename);
+           unlink ($this->file);
+           shell_exec('cp ' .  $tmp_filename . ' ' . $this->file);
+           unlink ($tmp_filename);
+         } 
         $filter_name = isset(self::$exportFilterMap['pdf'][$this->fileFamily]['unoconv']) ? self::$exportFilterMap['pdf'][$this->fileFamily]['unoconv'] : self::$exportFilterMap['pdf'][self::FAMILY_TEXT]['unoconv'];
         shell_exec('unoconv -f pdf -eSelectPdfVersion=1 --doctype=' . $filter_name . ' "' . $this->file . '" &>/dev/null');
 
