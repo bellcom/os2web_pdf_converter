@@ -124,18 +124,18 @@ class PDFConverter {
         // writer as filter.
         if ($this->fileExtension=='html'){
           // change HTML encoding to UTF 8
+           $this->improveHTML($output_dir, FALSE); 
            $tmp_filename=$output_dir . '/' .  $this->fileName.'_tmp.'.$this->fileExtension;
-           $encoding= str_replace("\n",'',array_pop(explode(':', shell_exec('file --mime-encoding ' . $this->file))));         //
+           $encoding= str_replace("\n", '', array_pop(explode(':', shell_exec('file --mime-encoding ' . $this->file))));         //
            if (strpos($encoding,'unknown')) 
                 $encoding = 'iso-8859-1' ;  
            shell_exec('iconv -f ' . $encoding . ' -t utf8 ' . $this->file . ' > ' . $tmp_filename);
-           unlink ($this->file);
-           shell_exec('cp ' .  $tmp_filename . ' ' . $this->file);
-           unlink ($tmp_filename);
+           shell_exec('mv ' .  $tmp_filename . ' ' . $this->file);
+          
          } 
         $filter_name = isset(self::$exportFilterMap['pdf'][$this->fileFamily]['unoconv']) ? self::$exportFilterMap['pdf'][$this->fileFamily]['unoconv'] : self::$exportFilterMap['pdf'][self::FAMILY_TEXT]['unoconv'];
         shell_exec('unoconv -f pdf -eSelectPdfVersion=1 --doctype=' . $filter_name . ' "' . $this->file . '" &>/dev/null');
-
+        $this->improveHTML($output_dir, TRUE);
         return TRUE;
 
       break;
@@ -212,4 +212,29 @@ class PDFConverter {
     }
     return $allowed_extensions;
   }
+ private function improveHTML($output_dir, $inline_img=TRUE) {
+   $html = file_get_contents($this->file);
+
+   $doc = new DOMDocument();
+   @$doc->loadHTML($html);
+   $tags = $doc->getElementsByTagName('img');
+   if ($tags->length==0) return FALSE;
+   foreach ($tags as $tag) {
+    if ($tag->getAttribute('src')!="") {
+     preg_match("#\w*?.(jpg|png|gif)#is", $tag->getAttribute('src'), $filename);     
+     if (file_exists($output_dir . '/' . $filename[0])){
+        if ($inline_img)  {
+        $imgData = base64_encode(file_get_contents($output_dir . '/' . $filename[0]));
+        $src = 'data: '.mime_content_type($output_dir . '/' . $filename[0]).';base64,'.$imgData;
+    }   
+    else 
+      $src=$filename[0];
+        
+   $tag->setAttribute('src',$src);     
+  }
+ }
+ }
+  $doc->saveHTMLFile($this->file);
+ } 
 }
+ 
