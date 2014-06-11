@@ -27,6 +27,7 @@ script.
    `sudo apt-get install libreoffice`
 
  - ImageMagick (Convert multipaged .tiff files to PDF)
+   `sudo apt-get install imagemagick`
 
 Usage
 -----
