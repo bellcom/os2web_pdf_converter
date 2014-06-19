@@ -29,6 +29,9 @@ script.
  - ImageMagick (Convert multipaged .tiff files to PDF)
    `sudo apt-get install imagemagick`
 
+ - UnoConv (Convert documents from OpenOffice to PDF)
+   `sudo apt-get install unoconv`
+
 Usage
 -----
 
