@@ -17,7 +17,7 @@
  */
 
 if (php_sapi_name() !== 'cli') {
-  // This script is ONLY allowed from commandline.
+  print ('This script is ONLY allowed from commandline.')
   exit();
 }
 
@@ -28,14 +28,17 @@ if (!shell_exec('which unoconv')) {
 
 if (!shell_exec('which soffice')) {
   print ('soffice was not found. You need to install a pdf conversion tool like LibreOffice.');
+  exit();
 }
 
 if (!shell_exec('which convert')) {
   print ('imagick was not found. Cannot convert .tiff files');
+  exit();
 }
 
 if (!shell_exec('which mapitool') || !shell_exec('which munpack')) {
   print ('you need mapitool and munpack to unpack and convert .msg files.');
+  exit();
 }
 
 if (!isset($_SERVER['argv'][1])) {
@@ -68,7 +71,7 @@ else {
     }
     define('DRUPAL_ROOT', $_SERVER['argv'][2]);
     require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
-    drupal_bootstrap(DRUPAL_BOOTSTRAP_DATABASE);
+    drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
   }
 }
 
@@ -137,10 +140,19 @@ function updateDrupalFile($file) {
     return FALSE;
   }
 
+  $privatepath = NULL;
+  $uri = 'private://';
+  if ($wrapper = file_stream_wrapper_get_instance_by_uri($uri)) {
+    $privatepath = $wrapper->realpath() . '/';
+  }
+
   $file_parts = explode('sites/default/files/', $file->file);
 
   if (!isset($file_parts[1])) {
-    return FALSE;
+    $file_parts = explode($privatepath, $file->file);
+    if (!isset($file_parts[1])){
+      return FALSE;
+    }
   }
 
   $public_file_uri = 'public://' . $file_parts[1];
@@ -165,6 +177,7 @@ function updateDrupalFile($file) {
         'filename' => basename($file->pdf),
         'timestamp' => time(),
         'filesize' => filesize($file->pdf),
+        'filemime' => 'application/pdf',
       ))
       ->condition('fid', $d_file['fid'])
       ->execute();
