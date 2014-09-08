@@ -17,7 +17,7 @@
  */
 
 if (php_sapi_name() !== 'cli') {
-  print ('This script is ONLY allowed from commandline.')
+  print ('This script is ONLY allowed from commandline.');
   exit();
 }
 
