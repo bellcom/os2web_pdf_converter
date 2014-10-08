@@ -177,11 +177,12 @@ function updateDrupalFile($file) {
 
     db_update('file_managed')
       ->fields(array(
-        'uri' => preg_replace('/\.(' . implode('|', PDFConverter::getAllowedExtenstions()) . ')$/i', '.pdf', $d_file['uri']),
         'filename' => basename($file->pdf),
-        'timestamp' => time(),
-        'filesize' => filesize($file->pdf),
+        'uri' => preg_replace('/\.(' . implode('|', PDFConverter::getAllowedExtenstions()) . ')$/i', '.pdf', $d_file['uri']),
         'filemime' => 'application/pdf',
+        'filesize' => filesize($file->pdf),
+        'timestamp' => time(),
+        'type' => 'document',
       ))
       ->condition('fid', $d_file['fid'])
       ->execute();
