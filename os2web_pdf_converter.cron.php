@@ -42,7 +42,7 @@ if (!shell_exec('which mapitool') || !shell_exec('which munpack')) {
 }
 
 if (!isset($_SERVER['argv'][1])) {
-  print ('Usage: php os2web_pdf_converter.php "/path/to/files" "/path/to/drupal"' . PHP_EOL);
+  print ('Usage: php os2web_pdf_converter.php "/path/to/files" "/path/to/drupal" "streamwrapper://"' . PHP_EOL);
   exit();
 }
 elseif (!is_dir($_SERVER['argv'][1])) {
@@ -165,11 +165,6 @@ function updateDrupalFile($file) {
   }
   $uris[] = $file->file;
   
-  $public_file_uri = 'public://' . $file_parts[1];
-  $private_file_uri = 'private://' . $file_parts[1];
-  $acadre_file_uri = 'acadre://' . $file_parts[1];
-
-  //$result = db_query('SELECT * FROM {node} WHERE nid IN (:nids)', array(':nids' => $nids));  
   $query = db_query('SELECT f.fid, f.uri
                       FROM {file_managed} f
                       WHERE f.uri IN (:uris)', 
