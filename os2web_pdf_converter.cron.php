@@ -55,6 +55,13 @@ else {
     exec('unoconv -l >/dev/null 2>/dev/null &');
   }
 
+  // Clean up ImageMagick garbage before converting
+  shell_exec('find /tmp/*.tmp -mtime +1 -delete 2> /dev/null');
+
+  // Clean up pdf2htmlEX garbage before converting
+  // This should be moved to another module
+  shell_exec('find /tmp/pdf2htmlEX-* -mtime +1 -delete 2> /dev/null');
+
   $directory_root = $_SERVER['argv'][1];
 
   $tmp_directory = '/tmp/os2web_pdf_converter';
