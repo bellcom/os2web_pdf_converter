@@ -56,6 +56,9 @@ else {
   }
 
   // Clean up ImageMagick garbage before converting
+  shell_exec('find /tmp/magick-* -mtime +1 -delete 2> /dev/null');
+
+  // Clean up temp files garbage before converting
   shell_exec('find /tmp/*.tmp -mtime +1 -delete 2> /dev/null');
 
   // Clean up pdf2htmlEX garbage before converting
