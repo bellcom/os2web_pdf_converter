@@ -17,36 +17,36 @@
  */
 
 if (php_sapi_name() !== 'cli') {
-  print ('This script is ONLY allowed from commandline.');
+  print ('This script is ONLY allowed from commandline.' . PHP_EOL);
   exit();
 }
 
 if (!shell_exec('which unoconv')) {
-  print ('unoconv was not found. hint: sudo apt-get install unoconv');
+  print ('unoconv was not found. hint: sudo apt-get install unoconv' . PHP_EOL);
   exit();
 }
 
 if (!shell_exec('which soffice')) {
-  print ('soffice was not found. You need to install a pdf conversion tool like LibreOffice.');
+  print ('soffice was not found. You need to install a pdf conversion tool like LibreOffice.' . PHP_EOL);
   exit();
 }
 
 if (!shell_exec('which convert')) {
-  print ('imagick was not found. Cannot convert .tiff files');
+  print ('imagick was not found. Cannot convert .tiff files' . PHP_EOL);
   exit();
 }
 
 if (!shell_exec('which mapitool') || !shell_exec('which munpack')) {
-  print ('you need mapitool and munpack to unpack and convert .msg files.');
+  print ('you need mapitool and munpack to unpack and convert .msg files.' . PHP_EOL);
   exit();
 }
 
 if (!isset($_SERVER['argv'][1])) {
-  print ('Usage: php os2web_pdf_converter.php "/path/to/files" "/path/to/drupal"');
+  print ('Usage: php os2web_pdf_converter.php "/path/to/files" "/path/to/drupal" "streamwrapper://"' . PHP_EOL);
   exit();
 }
 elseif (!is_dir($_SERVER['argv'][1])) {
-  print ('The path is not a directory!');
+  print ('The path is not a directory!' . PHP_EOL);
   exit();
 }
 else {
@@ -66,18 +66,22 @@ else {
   // Setup Drupal but only if provided.
   if (isset($_SERVER['argv'][2])) {
     if (!file_exists($_SERVER['argv'][2] . '/includes/bootstrap.inc')) {
-      print ('No Drupal instance was found at ' . $_SERVER['argv'][2]);
+      print ('No Drupal instance was found at ' . $_SERVER['argv'][2] . PHP_EOL);
       exit();
     }
     define('DRUPAL_ROOT', $_SERVER['argv'][2]);
     require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+    $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+  }
+  
+  // Setup Custom StreamWrapper byt only if  provided.
+  if (isset($_SERVER['argv'][3])) {
+    define('DRUPAL_CUSTOM_STREAM_WRAPPER', $_SERVER['argv'][3]);
   }
 }
 
-
 require 'lib/PDFConverter.php';
-
 
 $allowed_extensions = PDFConverter::getAllowedExtenstions();
 
@@ -140,32 +144,32 @@ function updateDrupalFile($file) {
     return FALSE;
   }
 
-  $privatepath = NULL;
-  $uri = 'private://';
-  if ($wrapper = file_stream_wrapper_get_instance_by_uri($uri)) {
-    $privatepath = $wrapper->realpath() . '/';
+  //Default stream / filepath
+  $streams = array('public://');
+  $path = 'sites/default/files/';
+  
+  if(defined('DRUPAL_CUSTOM_STREAM_WRAPPER')){
+    $wrapper = file_stream_wrapper_get_instance_by_uri(DRUPAL_CUSTOM_STREAM_WRAPPER);
+    $path = $wrapper->getDirectoryPath() . "/" . file_uri_target($uri);
+    $streams[] = DRUPAL_CUSTOM_STREAM_WRAPPER;
   }
-
-  $file_parts = explode('sites/default/files/', $file->file);
-
-  if (!isset($file_parts[1])) {
-    $file_parts = explode($privatepath, $file->file);
-    if (!isset($file_parts[1])){
-      return FALSE;
-    }
+ 
+  $file_parts = explode($path, $file->file);
+  if (!isset($file_parts[1])){
+    return FALSE;
   }
-
-  $public_file_uri = 'public://' . $file_parts[1];
-  $private_file_uri = 'private://' . $file_parts[1];
-
+  
+  $uris = array();
+  foreach($streams AS $stream){
+    $uris[] = $stream . $file_parts[1];
+  }
+  $uris[] = $file->file;
+  
   $query = db_query('SELECT f.fid, f.uri
                       FROM {file_managed} f
-                      WHERE f.uri = :public_uri
-                      OR f.uri = :private_uri
-                      OR f.uri = :original_uri', array(
-                        ':public_uri' => $public_file_uri,
-                        ':private_uri' => $private_file_uri,
-                        ':original_uri' => $file->file,
+                      WHERE f.uri IN (:uris)', 
+                      array(
+                        ':uris' => $uris
                       ));
   $d_file = $query->fetchAssoc();
 
@@ -173,11 +177,12 @@ function updateDrupalFile($file) {
 
     db_update('file_managed')
       ->fields(array(
-        'uri' => preg_replace('/\.(' . implode('|', PDFConverter::getAllowedExtenstions()) . ')$/i', '.pdf', $d_file['uri']),
         'filename' => basename($file->pdf),
-        'timestamp' => time(),
-        'filesize' => filesize($file->pdf),
+        'uri' => preg_replace('/\.(' . implode('|', PDFConverter::getAllowedExtenstions()) . ')$/i', '.pdf', $d_file['uri']),
         'filemime' => 'application/pdf',
+        'filesize' => filesize($file->pdf),
+        'timestamp' => time(),
+        'type' => 'document',
       ))
       ->condition('fid', $d_file['fid'])
       ->execute();

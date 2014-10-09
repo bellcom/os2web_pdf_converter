@@ -35,7 +35,7 @@ script.
 Usage
 -----
 
-  `php os2web_pdf_converter.php /path/to/files [/path/to/Drupal]`
+  `php os2web_pdf_converter.php /path/to/files [/path/to/Drupal] [acadre://]`
 
 Arguments:
 
@@ -45,3 +45,5 @@ Arguments:
 2: Path to your Drupal instance. When providing a valid Drupal path, it
    tries to update the corrosponding file entity in Drupal with the new
    .pdf URI. Providing the Drupal path bootstraps Drupal with database access.
+
+3: Custom StreamWrapper. acadre:// used to avoid media browser plus problems.
