@@ -51,7 +51,7 @@ elseif (!is_dir($_SERVER['argv'][1])) {
 }
 else {
   // Start unoconv if not started.
-  if (!shell_exec('ps -ef | grep -v grep | grep "/unoconv -l"')) {
+  if (!shell_exec('ps -ef | grep -v grep | grep "/unoconv -l"') && !shell_exec('ps -ef | grep -v grep | grep "/unoconv --listener"')) {
     exec('unoconv -l >/dev/null 2>/dev/null &');
   }
 
