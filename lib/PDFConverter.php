@@ -110,8 +110,9 @@ class PDFConverter {
         // Get the correct filter name. If couldnt be found it uses regular
         // writer as filter.
         $filter_name = isset(self::$exportFilterMap['pdf'][$this->fileFamily]['soffice']) ? self::$exportFilterMap['pdf'][$this->fileFamily]['soffice'] : self::$exportFilterMap['pdf'][self::FAMILY_TEXT]['soffice'];
-        shell_exec('soffice --headless --invisible -convert-to pdf:' . $filter_name . ' -outdir "' . $output_dir . '" "' . $this->file . '" &>/dev/null');
-
+        exec('soffice --headless --invisible -convert-to pdf:' . $filter_name . ' -outdir "' . $output_dir . '" "' . $this->file . '" 2>&1', $errors);
+        if ($errors)
+          throw new Exception('Conversion of ' . $this->file . ' failed: ' . PHP_EOL . implode(PHP_EOL, $errors));
         return TRUE;
 
       break;
@@ -129,12 +130,16 @@ class PDFConverter {
            $encoding= str_replace("\n", '', array_pop(explode(':', shell_exec('file --mime-encoding ' . $this->file))));         //
            if (strpos($encoding,'unknown')) 
                 $encoding = 'iso-8859-1' ;  
-           shell_exec('iconv -f ' . $encoding . ' -t utf8 ' . $this->file . ' > ' . $tmp_filename);
+           exec('iconv -f ' . $encoding . ' -t utf8 ' . $this->file . ' > ' . $tmp_filename . ' 2>&1', $errors);
+           if ($errors)
+             throw new Exception('Conversion of ' . $this->file . ' failed: ' . PHP_EOL . implode(PHP_EOL, $errors));
            shell_exec('mv ' .  $tmp_filename . ' ' . $this->file);
           
          } 
         $filter_name = isset(self::$exportFilterMap['pdf'][$this->fileFamily]['unoconv']) ? self::$exportFilterMap['pdf'][$this->fileFamily]['unoconv'] : self::$exportFilterMap['pdf'][self::FAMILY_TEXT]['unoconv'];
-        shell_exec('unoconv -f pdf -eSelectPdfVersion=1 --doctype=' . $filter_name . ' "' . $this->file . '" &>/dev/null');
+        exec('unoconv -f pdf -eSelectPdfVersion=1 --doctype=' . $filter_name . ' "' . $this->file . '" 2>&1', $errors);
+        if ($errors)
+          throw new Exception('Conversion of ' . $this->file . ' failed: ' . PHP_EOL . implode(PHP_EOL, $errors));
         $this->improveHTML($output_dir, TRUE);
         return TRUE;
 
@@ -145,8 +150,9 @@ class PDFConverter {
       // multipage .tiff files to pdf.
       //
       case 'ImageMagick':
-        shell_exec('convert -quiet "' . $this->file . '" -density 300x300 -compress jpeg "' . $this->pdf . '"');
-
+        exec('convert -quiet "' . $this->file . '" -density 300x300 -compress jpeg "' . $this->pdf . '" 2>&1', $errors);
+        if ($errors)
+          throw new Exception('Conversion of ' . $this->file . ' failed: ' . PHP_EOL . implode(PHP_EOL, $errors));
         return TRUE;
 
       break;
@@ -167,14 +173,18 @@ class PDFConverter {
         // http://blog.spiralofhope.com/667-importing-eml-into-msg-or-mbox.html
         // Convert .msg file to .eml
         if (!file_exists($eml_file) && preg_match('/\.msg$/i', $this->file)) {
-          shell_exec('mapitool -i --no-verbose "' . $this->file . '" &>/dev/null');
+          exec('mapitool -i --no-verbose "' . $this->file . '" 2>&1', $errors);
+          if ($errors)
+            throw new Exception('Conversion of ' . $this->file . ' failed: ' . PHP_EOL . implode(PHP_EOL, $errors));
         }
 
         // http://manpages.ubuntu.com/manpages/intrepid/man1/munpack.1.html
         // Unpack .eml file. This will put all attached documents into same
         // directory.
         if (file_exists($eml_file) && !file_exists($sub_dir . '/' . basename($eml_file) . '.part1.html')) {
-          shell_exec('munpack -t -C "' . $sub_dir . '" "' . $eml_file . '"');
+          exec('munpack -t -C "' . $sub_dir . '" "' . $eml_file . '" 2>&1', $errors);
+          if ($errors)
+                    throw new Exception('Conversion of ' . $this->file . ' failed: ' . PHP_EOL . implode(PHP_EOL, $errors));
 
           // Munpack unpacks the content of the email in .msg as a part1(txt)
           // and part2(html). Lets rename them and make it a correct filetype.

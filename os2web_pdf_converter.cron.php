@@ -68,7 +68,8 @@ else {
     }
     define('DRUPAL_ROOT', $_SERVER['argv'][2]);
     require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
-    drupal_bootstrap(DRUPAL_BOOTSTRAP_DATABASE);
+    drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+    require_once DRUPAL_ROOT . '/includes/module.inc';
   }
 }
 
@@ -84,17 +85,28 @@ foreach (getFilesList($directory_root, '/.*\.(' . implode('|', $allowed_extensio
   // Replaces the extension with ".pdf".
   $pdf_file = preg_replace('/\.(' . implode('|', $allowed_extensions) . ')$/i', '.pdf', $file);
   if (!file_exists($pdf_file)) {
-    try {
-      $file = new PDFConverter($file);
-      if ($file->convert()) {
-        if (defined('DRUPAL_ROOT')) {
-          updateDrupalFile($file);
+    $allow_conversion = TRUE;
+    $pathinfo = pathinfo($file);
+
+    if (module_exists('os2web_pdf_conversion_manager') && updateFileAttemptCount($pathinfo['basename']) >= 5){
+      $allow_conversion = FALSE;
+    }
+    if ($allow_conversion){
+      try {
+        $file = new PDFConverter($file);
+        if ($file->convert()) {
+          if (defined('DRUPAL_ROOT')) {
+            updateDrupalFile($file);
+            if (module_exists('os2web_pdf_conversion_manager'))
+              updateFileStatus($pathinfo['basename'], 'Converted');
+          }
         }
       }
-
-    }
-    catch(Exception $e) {
-      error_log($e->getMessage());
+      catch(Exception $e) {
+        watchdog('OS2Web converter', $e->getMessage(), null, WATCHDOG_ERROR);
+        if (module_exists('os2web_pdf_conversion_manager'))
+          updateFileStatus($pathinfo['basename'], 'Error, retrying', $e->getMessage());
+      }
     }
   }
 }
@@ -169,6 +181,48 @@ function updateDrupalFile($file) {
       ->condition('fid', $d_file['fid'])
       ->execute();
   }
+}
+
+/**
+ * Updates the status of the file in os2web_pdf_conversion_manager table.
+ *
+ *  * @param string $file
+ *   The file path.
+ */
+function updateFileStatus($filename, $status, $message = ''){
+  db_update('os2web_pdf_conversion_manager_files')
+    ->fields(array(
+      'status' => $status,
+      'message' => $message,
+    ))
+  ->condition('tmp_filename', $filename)
+  ->execute();
+}
+
+function updateFileAttemptCount($filename){
+  $attempt = db_select('os2web_pdf_conversion_manager_files', 'o')
+      ->fields('o', array('attempt'))
+      ->condition('tmp_filename', $filename)
+      ->execute()
+      ->fetchField();
+  $attempt++;
+
+  if ($attempt < 5){
+    db_update('os2web_pdf_conversion_manager_files')
+      ->fields(array(
+        'attempt' => $attempt,
+      ))
+      ->condition('tmp_filename', $filename)
+      ->execute();
+  } else {
+    db_update('os2web_pdf_conversion_manager_files')
+      ->fields(array(
+        'status' => 'Aborted',
+      ))
+      ->condition('tmp_filename', $filename)
+      ->execute();
+  }
+  return $attempt;
 }
 
 /**
