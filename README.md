@@ -27,11 +27,15 @@ script.
    `sudo apt-get install libreoffice`
 
  - ImageMagick (Convert multipaged .tiff files to PDF)
+   `sudo apt-get install imagemagick`
+
+ - UnoConv (Convert documents from OpenOffice to PDF)
+   `sudo apt-get install unoconv`
 
 Usage
 -----
 
-  `php os2web_pdf_converter.php /path/to/files [/path/to/Drupal]`
+  `php os2web_pdf_converter.php /path/to/files [/path/to/Drupal] [acadre://]`
 
 Arguments:
 
@@ -41,3 +45,5 @@ Arguments:
 2: Path to your Drupal instance. When providing a valid Drupal path, it
    tries to update the corrosponding file entity in Drupal with the new
    .pdf URI. Providing the Drupal path bootstraps Drupal with database access.
+
+3: Custom StreamWrapper. acadre:// used to avoid media browser plus problems.
