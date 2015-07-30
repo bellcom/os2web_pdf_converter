@@ -16,6 +16,8 @@
  *      .pdf URI.
  */
 
+define("MAX_ATTEMPTS", 6);
+
 if (php_sapi_name() !== 'cli') {
   print ('This script is ONLY allowed from commandline.' . PHP_EOL);
   exit();
@@ -104,13 +106,20 @@ foreach (getFilesList($directory_root, '/.*\.(' . implode('|', $allowed_extensio
   if (!file_exists($pdf_file)) {
     $allow_conversion = TRUE;
     $pathinfo = pathinfo($file);
-
-    if (module_exists('os2web_pdf_conversion_manager') && updateFileAttemptCount($pathinfo['basename']) >= 5){
+   
+    if (module_exists('os2web_pdf_conversion_manager') && updateFileAttemptCount($pathinfo['basename']) >= MAX_ATTEMPTS){
       $allow_conversion = FALSE;
     }
+    if (module_exists('os2web_pdf_conversion_manager') && !checkFileOutdated($pathinfo['basename'])) {
+      $allow_conversion = FALSE;
+    }
+
     if ($allow_conversion){
       try {
         $file = new PDFConverter($file);
+	//if (module_exists('os2web_pdf_conversion_manager')) {
+	//  checkFileOutdated($file);
+	//}
         if ($file->convert()) {
           if (defined('DRUPAL_ROOT')) {
             updateDrupalFile($file);
@@ -227,6 +236,40 @@ function updateFileStatus($filename, $status, $message = ''){
   ->execute();
 }
 
+/**
+ * Checks if the file is outdated.
+ * Files is outdated if the file is not found in file_managed table, or if the directory where file is located does not exist
+ *
+ *  * @param string $file
+ *   The file path.
+ */
+function checkFileOutdated($filename) {
+  $fid = db_select('os2web_pdf_conversion_manager_files', 'o')
+      ->fields('o', array('fid'))
+      ->condition('tmp_filename', $filename)
+      ->execute()
+      ->fetchField();
+
+  $uri = db_select('file_managed', 'f')
+    ->fields('f', array('uri'))
+    ->condition('fid', $fid)
+    ->execute()
+    ->fetchField();
+
+  if (!file_exists($uri)) {
+    updateFileStatus($filename, 'Outdated', 'Destination URL does not exist: ' . $uri);
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Increases the file convesion attemps count by one
+ * If attempts count is bigger than the contant limit MAX_ATTEMPTS, file status is set to Aborted
+ *
+ *  * @param string $file
+ *   The file path.
+ */
 function updateFileAttemptCount($filename){
   $attempt = db_select('os2web_pdf_conversion_manager_files', 'o')
       ->fields('o', array('attempt'))
@@ -235,7 +278,7 @@ function updateFileAttemptCount($filename){
       ->fetchField();
   $attempt++;
 
-  if ($attempt < 5){
+  if ($attempt < MAX_ATTEMPTS){
     db_update('os2web_pdf_conversion_manager_files')
       ->fields(array(
         'attempt' => $attempt,
