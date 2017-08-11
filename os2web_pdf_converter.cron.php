@@ -40,6 +40,7 @@ if (!shell_exec('which convert')) {
 
 if (!shell_exec('which mapitool') || !shell_exec('which munpack')) {
   print ('you need mapitool and munpack to unpack and convert .msg files.' . PHP_EOL);
+  print (shell_exec('echo $PATH') . PHP_EOL);
   exit();
 }
 
@@ -75,6 +76,9 @@ else {
   }
   putenv("MAGICK_TMPDIR=" . $tmp_directory);
 
+  # Moved here from line 93 since it was missing later on
+  $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+
   // Setup Drupal but only if provided.
   if (isset($_SERVER['argv'][2])) {
     if (!file_exists($_SERVER['argv'][2] . '/includes/bootstrap.inc')) {
@@ -85,7 +89,8 @@ else {
     require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
     require_once DRUPAL_ROOT . '/includes/module.inc';
-    $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+    #commented out since it was moved to line 79
+    #$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
   }
   
   // Setup Custom StreamWrapper byt only if  provided.
