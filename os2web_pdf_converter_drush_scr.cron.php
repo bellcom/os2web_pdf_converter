@@ -177,7 +177,7 @@ function updateDrupalFile($file) {
   $streams = array('public://');
   $path = 'sites/default/files/';
 
-  if ( defined('DRUPAL_CUSTOM_STREAM_WRAPPER') ) {
+  if ( defined('DRUPAL_CUSTOM_STREAM_WRAPPER') && DRUPAL_CUSTOM_STREAM_WRAPPER !== FALSE) {
     $wrapper = file_stream_wrapper_get_instance_by_uri(DRUPAL_CUSTOM_STREAM_WRAPPER);
     $path = $wrapper->getDirectoryPath() . "/" . file_uri_target($uri);
     $streams[] = DRUPAL_CUSTOM_STREAM_WRAPPER;
